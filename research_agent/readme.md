@@ -80,7 +80,7 @@ The system employs a multi-agent architecture with specialized components:
 ```
 
 git clone <repository-url>
-cd ai-research-assistant
+cd research_agent
 
 ```
 
@@ -164,7 +164,7 @@ Launch the Streamlit web application:
 
 ```
 
-streamlit run streamlit_app.py
+streamlit run research_streamlit_app.py
 
 ```
 
@@ -206,7 +206,7 @@ research_agent/
 ├── main.py               \# Main coordination and CLI interface
 ├── __init__.py           \# Package initialization
 ├── requirements.txt      \# Python dependencies
-├── streamlit_app.py     \# Web interface
+├── research_streamlit_app.py     \# Web interface
 ├── .env                 \# Environment variables (create this)
 └── README.md           \# Project documentation
 
