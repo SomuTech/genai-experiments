@@ -67,7 +67,7 @@ def load_environment_variables() -> None:
     logger.info("Environment variables loaded successfully")
 
 
-def get_llm(temperature: float = 0.3, max_tokens: int = 8000) -> ChatGoogleGenerativeAI:
+def get_llm(temperature: float = 0.3, max_tokens: int = 5000) -> ChatGoogleGenerativeAI:
     """
     Initialize and configure the Gemini language model.
 
@@ -93,10 +93,10 @@ def get_llm(temperature: float = 0.3, max_tokens: int = 8000) -> ChatGoogleGener
             model_kwargs={
                 "system_instruction": (
                     f"Current date: {current_date}. Always prioritize the most "
-                    "recent information from 2025 when available. Provide accurate, "
+                    "recent information when available. Provide accurate, "
                     "well-structured, and comprehensive responses."
                 )
-            },
+            }, 
         )
 
         logger.info("Language model initialized successfully")

@@ -14,10 +14,11 @@ import time
 from datetime import datetime
 from typing import Dict, Any, Tuple, List
 import re
+import markdown
 
 import streamlit as st
 
-# Import the refactored research system
+# Import the research system
 from config import (
     load_environment_variables,
     get_llm,
@@ -25,7 +26,6 @@ from config import (
     ResearchError,
 )
 from main import StreamlinedCoordinator
-
 
 # ================================================================
 # STREAMLIT CONFIGURATION
@@ -37,7 +37,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
-
 
 # ================================================================
 # PROFESSIONAL CSS STYLING
@@ -190,22 +189,28 @@ st.markdown(
         margin-bottom: 0 !important;
     }
     
-    .stButton button[kind="secondary"] {
-        background: rgba(255, 255, 255, 0.08) !important;
-        color: #e2e8f0 !important;
-        border: 2px solid rgba(255, 255, 255, 0.15) !important;
-        border-radius: 12px !important;
+    /* Topic links styling */
+    .topic-link {
+        color: #667eea !important;
+        text-decoration: none !important;
+        font-size: 0.95rem !important;
         font-weight: 500 !important;
+        padding: 0.75rem 1rem !important;
+        margin: 0.5rem 0 !important;
+        border-radius: 8px !important;
         transition: all 0.3s ease !important;
-        height: 48px !important;
-        backdrop-filter: blur(10px);
+        background: rgba(255, 255, 255, 0.03) !important;
+        border: 1px solid rgba(102, 126, 234, 0.2) !important;
+        display: block !important;
+        cursor: pointer !important;
     }
     
-    .stButton button[kind="secondary"]:hover {
-        background: rgba(255, 255, 255, 0.15) !important;
-        border-color: rgba(255, 255, 255, 0.3) !important;
-        transform: translateY(-2px) !important;
+    .topic-link:hover {
         color: #ffffff !important;
+        background: rgba(102, 126, 234, 0.15) !important;
+        border-color: rgba(102, 126, 234, 0.4) !important;
+        transform: translateX(4px) !important;
+        text-decoration: none !important;
     }
     
     .sidebar-section {
@@ -253,7 +258,7 @@ st.markdown(
         line-height: 1.8;
         border: 1px solid rgba(255, 255, 255, 0.1);
         backdrop-filter: blur(10px);
-        margin: 2rem 0;
+        margin: 2rem 0 3rem 0;
     }
     
     .blog-content h1 {
@@ -309,6 +314,39 @@ st.markdown(
         box-shadow: 0 4px 20px rgba(72, 187, 120, 0.3);
     }
     
+    /* Action buttons container */
+    .action-buttons {
+        margin-top: 2.5rem !important;
+        padding-top: 2rem !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+    }
+    
+    /* Download button styling */
+    .stDownloadButton > button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        color: white !important;
+        border: none !important;
+        padding: 0 2rem !important;
+        border-radius: 12px !important;
+        font-weight: 600 !important;
+        font-size: 0.95rem !important;
+        cursor: pointer !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4) !important;
+        height: 50px !important;
+        min-width: 140px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin: 0 !important;
+    }
+    
+    .stDownloadButton > button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 25px rgba(102, 126, 234, 0.5) !important;
+        background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%) !important;
+    }
+    
     .stMultiSelect [data-baseweb="tag"] {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
         border: none !important;
@@ -333,93 +371,84 @@ st.markdown(
     .css-1d391kg .stMarkdown {
         color: #e2e8f0 !important;
     }
+    
+    /* Updated topic links styling for vertical list */
+.stButton[data-testid="baseButton-secondary"] > button {
+    background: transparent !important;
+    color: #667eea !important;
+    border: none !important;
+    padding: 1rem 0 !important;
+    border-radius: 0 !important;
+    font-weight: 400 !important;
+    font-size: 1rem !important;
+    text-align: left !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    line-height: 1.5 !important;
+    transition: all 0.2s ease !important;
+    border-bottom: 1px solid rgba(102, 126, 234, 0.1) !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+.stButton[data-testid="baseButton-secondary"] > button:hover {
+    color: #ffffff !important;
+    background: rgba(102, 126, 234, 0.1) !important;
+    border-bottom-color: rgba(102, 126, 234, 0.3) !important;
+    transform: none !important;
+    box-shadow: none !important;
+    padding-left: 1rem !important;
+}
+
+/* Hide the secondary button styling for topic links */
+div[data-testid="baseButton-secondary"] {
+    width: 100% !important;
+    margin-bottom: 0.5rem !important;
+}
+
+
 </style>
 """,
     unsafe_allow_html=True,
 )
 
-
 # ================================================================
 # UTILITY FUNCTIONS
 # ================================================================
 
-
 def format_blog_content(content: str) -> str:
     """
-    Format blog content with proper HTML styling and list handling.
-
+    Convert markdown content to HTML using the markdown library.
+    
     Args:
-        content: Raw blog content string
-
+        content: Raw markdown content string
+        
     Returns:
         Formatted HTML content string
     """
     if not content:
         return "<p>No content available.</p>"
-
-    # Handle markdown formatting
-    content = re.sub(r"\*\*(.*?)\*\*", r"<strong>\1</strong>", content)
-    content = re.sub(r"(?<!\*)\*([^*]+)\*(?!\*)", r"<em>\1</em>", content)
-    content = re.sub(
-        r"`([^`]+)`",
-        r'<code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">\1</code>',
-        content,
+    
+    # Configure markdown with extensions for better formatting
+    md = markdown.Markdown(
+        extensions=[
+            'extra',          # Tables, fenced code blocks, etc.
+            'codehilite',     # Syntax highlighting
+            'toc',            # Table of contents
+            'nl2br',          # Convert newlines to <br>
+            'sane_lists'      # Better list handling
+        ]
     )
-
-    lines = content.split("\n")
-    formatted_lines = []
-    in_list = False
-
-    for line in lines:
-        stripped_line = line.strip()
-        if not stripped_line:
-            if in_list:
-                formatted_lines.append("</ul>")
-                in_list = False
-            continue
-
-        # Process headers
-        if stripped_line.startswith("### "):
-            if in_list:
-                formatted_lines.append("</ul>")
-                in_list = False
-            formatted_lines.append(f"<h3>{stripped_line[4:].strip()}</h3>")
-        elif stripped_line.startswith("## "):
-            if in_list:
-                formatted_lines.append("</ul>")
-                in_list = False
-            formatted_lines.append(f"<h2>{stripped_line[3:].strip()}</h2>")
-        elif stripped_line.startswith("# "):
-            if in_list:
-                formatted_lines.append("</ul>")
-                in_list = False
-            formatted_lines.append(f"<h1>{stripped_line[2:].strip()}</h1>")
-        # Process list items
-        elif stripped_line.startswith(("• ", "* ", "- ")):
-            if not in_list:
-                formatted_lines.append("<ul>")
-                in_list = True
-            list_text = stripped_line[2:].strip()
-            formatted_lines.append(f"<li>{list_text}</li>")
-        # Process regular paragraphs
-        else:
-            if in_list:
-                formatted_lines.append("</ul>")
-                in_list = False
-            if stripped_line and not stripped_line.startswith("<"):
-                formatted_lines.append(f"<p>{stripped_line}</p>")
-
-    # Close any open list
-    if in_list:
-        formatted_lines.append("</ul>")
-
-    return "\n".join(formatted_lines)
-
+    
+    # Convert markdown to HTML
+    html_content = md.convert(content)
+    
+    return html_content
 
 # ================================================================
 # UI COMPONENTS
 # ================================================================
-
 
 def render_header() -> None:
     """Render the application header."""
@@ -430,7 +459,6 @@ def render_header() -> None:
         '<p class="subtitle">Generate comprehensive research reports using advanced AI agents</p>',
         unsafe_allow_html=True,
     )
-
 
 def render_sidebar() -> Tuple[str, List[str]]:
     """
@@ -493,7 +521,6 @@ def render_sidebar() -> Tuple[str, List[str]]:
             """
         **For Best Results:**
         - Be specific with your research topic
-        - Include current company or product names
         - Use relevant industry keywords
         - Specify time periods if needed
         - Select 3-5 focus areas maximum
@@ -507,21 +534,15 @@ def render_sidebar() -> Tuple[str, List[str]]:
 
     return research_depth, focus_areas
 
-
 def render_research_input() -> Tuple[str, bool]:
-    """
-    Render the research input form.
-
-    Returns:
-        Tuple containing the research topic and whether research should start
-    """
+    """Render the research input form."""
     st.markdown('<div class="research-input-card">', unsafe_allow_html=True)
     st.markdown(
         '<div class="research-input-header">Research Topic</div>',
         unsafe_allow_html=True,
     )
 
-    # Form for proper alignment
+    # Disable form if research is in progress
     with st.form("research_form", clear_on_submit=False):
         col1, col2 = st.columns([4, 1])
 
@@ -530,47 +551,53 @@ def render_research_input() -> Tuple[str, bool]:
             research_topic = st.text_input(
                 "",
                 value=current_topic,
-                placeholder="Enter your research topic (e.g., 'AI in Healthcare 2025', 'Quantum Computing Applications')",
+                placeholder="Enter your research topic..." if not st.session_state.get("research_in_progress", False) else "Research in progress...",
                 key="topic_input_form",
                 label_visibility="collapsed",
+                disabled=st.session_state.get("research_in_progress", False)  # Disable during research
             )
 
         with col2:
-            start_research = st.form_submit_button("Research", use_container_width=True)
+            start_research = st.form_submit_button(
+                "Research", 
+                use_container_width=True,
+                disabled=st.session_state.get("research_in_progress", False)  # Disable during research
+            )
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Handle form submission
-    if start_research and research_topic:
+    # Handle form submission only if not already researching
+    if start_research and research_topic and not st.session_state.get("research_in_progress", False):
         st.session_state.research_topic = research_topic
         st.session_state.topic_input = research_topic
 
-    # Popular topics section
-    st.markdown(
-        '<div class="section-header">Popular Research Topics</div>',
-        unsafe_allow_html=True,
-    )
+    final_topic = research_topic or st.session_state.get("research_topic", "")
+    return final_topic, start_research
 
-    col1, col2, col3, col4 = st.columns(4)
+def render_popular_topics() -> None:
+    """Render popular research topics as clickable text links listed vertically."""
+    # Hide topics if research has started OR is in progress OR is complete
+    if (not st.session_state.get("research_in_progress", False) and 
+        not st.session_state.get("research_complete", False)):
+        st.markdown(
+            '<div class="section-header">Popular Research Topics</div>',
+            unsafe_allow_html=True,
+        )
 
-    example_topics = [
-        "Artificial Intelligence in 2025",
-        "Sustainable Energy Solutions",
-        "Remote Work Technologies",
-        "Cryptocurrency Market Trends",
-    ]
+        example_topics = [
+            "Artificial Intelligence Applications in Healthcare Diagnosis and Treatment Systems for 2025",
+            "Sustainable Energy Solutions and Renewable Technology Adoption in Developing Countries",
+            "Cryptocurrency Market Analysis and Blockchain Technology Integration in Financial Systems",
+            "Climate Change Mitigation Strategies and Environmental Policy Implementation Worldwide",
+            "Quantum Computing Advancements and Their Applications in Scientific Research",
+            "Cybersecurity Threats and Data Protection Measures in Digital Transformation Era",
+        ]
 
-    for i, topic in enumerate(example_topics):
-        with [col1, col2, col3, col4][i]:
-            if st.button(
-                topic, key=f"example_{i}", help=f"Research: {topic}", type="secondary"
-            ):
+        for i, topic in enumerate(example_topics):
+            if st.button(topic, key=f"topic_link_{i}", help=f"Click to research: {topic}"):
                 st.session_state.research_topic = topic
                 st.session_state.topic_input = topic
                 st.rerun()
-
-    final_topic = research_topic or st.session_state.get("research_topic", "")
-    return final_topic, start_research
 
 
 def render_research_progress_minimal(completed_tasks: int, total_tasks: int) -> None:
@@ -590,7 +617,6 @@ def render_research_progress_minimal(completed_tasks: int, total_tasks: int) -> 
     )
     st.progress(progress_percentage)
     st.markdown("</div>", unsafe_allow_html=True)
-
 
 def render_blog_report(blog_content: str, research_topic: str) -> None:
     """
@@ -622,7 +648,8 @@ def render_blog_report(blog_content: str, research_topic: str) -> None:
     else:
         st.error("No content generated. Please try again.")
 
-    # Action buttons
+    # Action buttons with proper spacing and styling
+    st.markdown('<div class="action-buttons">', unsafe_allow_html=True)
     col1, col2, col3 = st.columns(3)
 
     with col1:
@@ -643,17 +670,19 @@ def render_blog_report(blog_content: str, research_topic: str) -> None:
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
             st.rerun()
-
+    
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # ================================================================
 # MAIN APPLICATION
 # ================================================================
 
-
 def initialize_session_state() -> None:
     """Initialize Streamlit session state variables."""
     if "research_complete" not in st.session_state:
         st.session_state.research_complete = False
+    if "research_in_progress" not in st.session_state:
+        st.session_state.research_in_progress = False
     if "blog_content" not in st.session_state:
         st.session_state.blog_content = ""
     if "current_topic" not in st.session_state:
@@ -676,10 +705,9 @@ def validate_environment() -> bool:
         st.info("Required: SERPER_API_KEY and GOOGLE_API_KEY in your .env file")
         return False
 
-
 def execute_research_workflow(research_topic: str, focus_areas: List[str]) -> bool:
     """
-    Execute the main research workflow.
+    Execute the main research workflow with continuous progress tracking.
 
     Args:
         research_topic: Topic to research
@@ -689,6 +717,8 @@ def execute_research_workflow(research_topic: str, focus_areas: List[str]) -> bo
         True if research completed successfully, False otherwise
     """
     try:
+        # Set research in progress flag
+        st.session_state.research_in_progress = True
         st.session_state.current_topic = research_topic
         st.session_state.focus_areas = focus_areas
 
@@ -699,17 +729,31 @@ def execute_research_workflow(research_topic: str, focus_areas: List[str]) -> bo
 
         start_time = time.time()
 
-        # Initialize research
+        # Phase 1: Initialize research (0-10%)
+        with progress_placeholder.container():
+            st.markdown('<div class="task-progress-minimal">', unsafe_allow_html=True)
+            st.markdown('<div class="progress-text">Initializing research... 0% complete</div>', unsafe_allow_html=True)
+            st.progress(0.0)
+            st.markdown('</div>', unsafe_allow_html=True)
+
         with st.spinner("Initializing research..."):
             tasks = coordinator.planner.create_research_plan(research_topic)
             total_tasks = len(tasks)
 
+        # Phase 2: Execute research tasks (10-70%)
         research_results = {}
-
-        # Execute research tasks
+        base_progress = 0.1  # 10% for initialization
+        research_progress_range = 0.6  # 60% for research tasks
+        
         for i, task in enumerate(tasks):
+            # Calculate progress within research phase
+            task_progress = base_progress + (i / total_tasks) * research_progress_range
+            
             with progress_placeholder.container():
-                render_research_progress_minimal(i, total_tasks)
+                st.markdown('<div class="task-progress-minimal">', unsafe_allow_html=True)
+                st.markdown(f'<div class="progress-text">Executing research tasks... {task_progress:.0%} complete</div>', unsafe_allow_html=True)
+                st.progress(task_progress)
+                st.markdown('</div>', unsafe_allow_html=True)
 
             with st.spinner(f"Executing: {task.description}"):
                 result = coordinator.researcher.execute_task(task, focus_areas)
@@ -717,16 +761,22 @@ def execute_research_workflow(research_topic: str, focus_areas: List[str]) -> bo
 
             time.sleep(0.2)
 
-        # Final progress update
+        # Phase 3: Analysis (70-85%)
         with progress_placeholder.container():
-            render_research_progress_minimal(total_tasks, total_tasks)
+            st.markdown('<div class="task-progress-minimal">', unsafe_allow_html=True)
+            st.markdown('<div class="progress-text">Analyzing research findings... 70% complete</div>', unsafe_allow_html=True)
+            st.progress(0.7)
+            st.markdown('</div>', unsafe_allow_html=True)
 
-        time.sleep(0.5)
-        progress_placeholder.empty()
-
-        # Analysis and report generation
         with st.spinner("Analyzing research findings..."):
             analysis = coordinator.analyzer.analyze(research_results)
+
+        # Phase 4: Report generation (85-100%)
+        with progress_placeholder.container():
+            st.markdown('<div class="task-progress-minimal">', unsafe_allow_html=True)
+            st.markdown('<div class="progress-text">Generating comprehensive report... 85% complete</div>', unsafe_allow_html=True)
+            st.progress(0.85)
+            st.markdown('</div>', unsafe_allow_html=True)
 
         with st.spinner("Generating comprehensive report..."):
             blog_content = coordinator.reporter.generate_blog_report(
@@ -734,7 +784,20 @@ def execute_research_workflow(research_topic: str, focus_areas: List[str]) -> bo
             )
             st.session_state.blog_content = blog_content
 
+        # Final completion (100%)
+        with progress_placeholder.container():
+            st.markdown('<div class="task-progress-minimal">', unsafe_allow_html=True)
+            st.markdown('<div class="progress-text">Research completed! 100% complete</div>', unsafe_allow_html=True)
+            st.progress(1.0)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        time.sleep(1)
+        progress_placeholder.empty()
+
+        # Clear research in progress flag and set completion
+        st.session_state.research_in_progress = False
         st.session_state.research_complete = True
+        
         end_time = time.time()
         st.success(f"Research completed in {end_time - start_time:.1f} seconds")
 
@@ -744,14 +807,15 @@ def execute_research_workflow(research_topic: str, focus_areas: List[str]) -> bo
         return True
 
     except (ConfigurationError, ResearchError) as e:
+        st.session_state.research_in_progress = False
         st.error(f"Error during research: {str(e)}")
         st.info("Try a simpler topic or check your API configuration")
         return False
     except Exception as e:
+        st.session_state.research_in_progress = False
         st.error(f"Unexpected error: {str(e)}")
         st.info("Please check your configuration and try again")
         return False
-
 
 def main() -> None:
     """Main application entry point."""
@@ -761,6 +825,9 @@ def main() -> None:
 
     if not st.session_state.research_complete:
         research_topic, start_research = render_research_input()
+        
+        # Only show popular topics if research hasn't started
+        render_popular_topics()
 
         if start_research and research_topic:
             if validate_environment():
@@ -769,7 +836,6 @@ def main() -> None:
         render_blog_report(
             st.session_state.blog_content, st.session_state.current_topic
         )
-
 
 if __name__ == "__main__":
     main()
