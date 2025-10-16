@@ -522,6 +522,6 @@ st.markdown('</div>', unsafe_allow_html=True)
 st.markdown("""
 <div style="text-align: center; padding: 20px; color: #666; font-size: 12px; margin-top: 30px;">
     <hr style="border: none; border-top: 1px solid #ddd; margin-bottom: 10px;">
-    GE Vernova Grid Solutions © 2025 | CID Customization Tool v1.0.0
+    SomuTech Solutions © 2025 | CID Customization Tool v1.0.0
 </div>
 """, unsafe_allow_html=True)
